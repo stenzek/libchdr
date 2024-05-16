@@ -838,7 +838,12 @@ static unsigned long MY_getauxval(int aux)
 
   #define MY_HWCAP_CHECK_FUNC(name) \
   BoolInt CPU_IsSupported_ ## name(void) { return 0; }
+
+#if defined(__SWITCH__) || defined(__vita__)
+  BoolInt CPU_IsSupported_NEON(void) { return 1; }
+#else
   MY_HWCAP_CHECK_FUNC(NEON)
+#endif
 
 #endif // USE_HWCAP
 
