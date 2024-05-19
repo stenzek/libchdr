@@ -41,6 +41,7 @@ else()
 endif()
 
 # zstd
+option(ZSTD_BUILD_SHARED "BUILD SHARED LIBRARIES" OFF)
 option(ZSTD_BUILD_PROGRAMS "BUILD PROGRAMS" OFF)
 add_subdirectory(deps/zstd-1.5.6/build/cmake EXCLUDE_FROM_ALL)
 list(APPEND CHDR_LIBS libzstd_static)
