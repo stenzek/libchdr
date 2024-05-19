@@ -40,10 +40,10 @@ else()
   list(APPEND CHDR_LIBS zlibstatic)
 endif()
 
-# zstd 
-add_subdirectory(deps/zstd-1.5.5 EXCLUDE_FROM_ALL)
-list(APPEND CHDR_LIBS zstd)
-list(APPEND CHDR_INCLUDES zstd)
+# zstd
+option(ZSTD_BUILD_PROGRAMS "BUILD PROGRAMS" OFF)
+add_subdirectory(deps/zstd-1.5.6/build/cmake EXCLUDE_FROM_ALL)
+list(APPEND CHDR_LIBS libzstd_static)
 #--------------------------------------------------
 # chdr
 #--------------------------------------------------
