@@ -3225,7 +3225,7 @@ static core_file *core_stdio_fopen(char const *path) {
 	getting file size with stdio
 -------------------------------------------------*/
 static UINT64 core_stdio_fsize(core_file *file) {
-#if defined __LIBRETRO__
+#if defined USE_LIBRETRO_VFS
 	#define core_stdio_fseek_impl fseek
 	#define core_stdio_ftell_impl ftell
 #elif defined(__WIN32__) || defined(_WIN32) || defined(WIN32) || defined(__WIN64__)
