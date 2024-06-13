@@ -10,14 +10,12 @@
 
 #define ARRAY_LENGTH(x) (sizeof(x)/sizeof(x[0]))
 
-#if defined(__PS3__) || defined(__PSL1GHT__)
 #undef UINT32
 #undef UINT16
 #undef UINT8
 #undef INT32
 #undef INT16
 #undef INT8
-#endif
 
 #define UINT64 uint64_t
 #define UINT32 uint32_t
