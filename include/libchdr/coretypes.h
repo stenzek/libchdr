@@ -10,24 +10,22 @@
 
 #define ARRAY_LENGTH(x) (sizeof(x)/sizeof(x[0]))
 
-#if defined(__PS3__) || defined(__PSL1GHT__)
 #undef UINT32
 #undef UINT16
 #undef UINT8
 #undef INT32
 #undef INT16
 #undef INT8
-#endif
 
-typedef uint64_t UINT64;
-typedef uint32_t UINT32;
-typedef uint16_t UINT16;
-typedef uint8_t UINT8;
+#define UINT64 uint64_t
+#define UINT32 uint32_t
+#define UINT16 uint16_t
+#define UINT8 uint8_t
 
-typedef int64_t INT64;
-typedef int32_t INT32;
-typedef int16_t INT16;
-typedef int8_t INT8;
+#define INT64 int64_t
+#define INT32 int32_t
+#define INT16 int16_t
+#define INT8 int8_t
 
 typedef struct chd_core_file {
 	/*
