@@ -2708,6 +2708,10 @@ static uint8_t* hunk_read_compressed(chd_file *chd, uint64_t offset, size_t size
 	}
 	else
 	{
+		/* make sure it isn't larger than the compressed buffer */
+		if (size > chd->header.hunkbytes)
+			return NULL;
+
 		core_fseek(chd->file, offset, SEEK_SET);
 		bytes = core_fread(chd->file, chd->compressed, size);
 		if (bytes != size)
