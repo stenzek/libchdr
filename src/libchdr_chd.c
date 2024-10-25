@@ -1829,6 +1829,7 @@ static inline void map_extract_old(const uint8_t *base, map_entry *entry, uint32
 -------------------------------------------------*/
 
 CHD_EXPORT chd_error chd_open_file(FILE *file, int mode, chd_file *parent, chd_file **chd) {
+	chd_error err;
 	core_file *stream = malloc(sizeof(core_file));
 	if (!stream)
 		return CHDERR_OUT_OF_MEMORY;
@@ -1838,7 +1839,15 @@ CHD_EXPORT chd_error chd_open_file(FILE *file, int mode, chd_file *parent, chd_f
 	stream->fclose = core_stdio_fclose_nonowner;
 	stream->fseek = core_stdio_fseek;
 
-	return chd_open_core_file(stream, mode, parent, chd);
+	err = chd_open_core_file(stream, mode, parent, chd);
+	if (err != CHDERR_NONE)
+		return err;
+
+	// swap out the fclose so that we close it on chd clost
+	if (mode & CHD_OPEN_TRANSFER_FILE)
+		stream->fclose = core_stdio_fclose;
+
+	return CHDERR_NONE;
 }
 
 /*-------------------------------------------------
