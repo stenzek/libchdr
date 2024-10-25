@@ -2062,25 +2062,54 @@ cleanup:
     memory
 -------------------------------------------------*/
 
-CHD_EXPORT chd_error chd_precache(chd_file *chd)
+CHD_EXPORT chd_error chd_precache(chd_file* chd)
 {
-	int64_t count;
+	return chd_precache_progress(chd, NULL, NULL);
+}
+
+CHD_EXPORT chd_error chd_precache_progress(chd_file* chd, void(*progress)(size_t pos, size_t total, void* param), void* param)
+{
+#define PRECACHE_CHUNK_SIZE 16 * 1024 * 1024
+
+	size_t count;
+	uint64_t done, req_count, last_update_done, update_interval;
 
 	if (chd->file_cache == NULL)
 	{
 		chd->file_cache = malloc(chd->file_size);
 		if (chd->file_cache == NULL)
 			return CHDERR_OUT_OF_MEMORY;
-		core_fseek(chd->file, 0, SEEK_SET);
-		count = core_fread(chd->file, chd->file_cache, chd->file_size);
-		if (count != chd->file_size)
-		{
-			free(chd->file_cache);
-			chd->file_cache = NULL;
+		if (core_fseek(chd->file, 0, SEEK_SET) != 0)
 			return CHDERR_READ_ERROR;
+
+		done = 0;
+		last_update_done = 0;
+		update_interval = ((chd->file_size + 99) / 100);
+
+		while (done < chd->file_size)
+		{
+			req_count = chd->file_size - done;
+			if (req_count > PRECACHE_CHUNK_SIZE)
+				req_count = PRECACHE_CHUNK_SIZE;
+
+			count = core_fread(chd->file, chd->file_cache + (size_t)done, (size_t)req_count);
+			if (count != (size_t)req_count)
+			{
+				free(chd->file_cache);
+				chd->file_cache = NULL;
+				return CHDERR_READ_ERROR;
+			}
+
+			done += req_count;
+			if (progress != NULL && (done - last_update_done) >= update_interval && done != chd->file_size)
+			{
+				last_update_done = done;
+				progress(done, chd->file_size, param);
+			}
 		}
 	}
 
+#undef PRECACHE_CHUNK_SIZE
 	return CHDERR_NONE;
 }
 
