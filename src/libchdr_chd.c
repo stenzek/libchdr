@@ -2503,6 +2503,14 @@ static chd_error header_validate(const chd_header *header)
 			return CHDERR_INVALID_PARAMETER;
 	}
 
+	/* some basic size checks to prevent huge mallocs: hunk size probably shouldn't be more than 128MB */
+	if (header->hunkbytes >= (128 * 1024 * 1024))
+		return CHDERR_INVALID_PARAMETER;
+
+	/* - we're currently only using this for CD/DVDs, if we end up with more than 10GB data, it's probably invalid */
+	if (((uint64_t)header->hunkbytes * (uint64_t)header->totalhunks) >= (10ULL * 1024 * 1024 * 1024))
+		return CHDERR_INVALID_PARAMETER;
+
 	return CHDERR_NONE;
 }
 
