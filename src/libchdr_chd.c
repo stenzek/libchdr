@@ -2277,6 +2277,14 @@ CHD_EXPORT core_file *chd_core_file(chd_file *chd)
 	return chd->file;
 }
 
+CHD_EXPORT uint64_t chd_get_compressed_size(chd_file *chd)
+{
+	uint64_t size = chd->file->fsize(chd->file);
+	if (chd->parent)
+		size += chd_get_compressed_size(chd->parent);
+	return size;
+}
+
 /*-------------------------------------------------
     chd_error_string - return an error string for
     the given CHD error
