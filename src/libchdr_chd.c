@@ -89,6 +89,11 @@
 
 #define CHD_V1_SECTOR_SIZE			512			/* size of a "sector" in the V1 header */
 
+#define CHD_MAX_HUNK_SIZE				(128 * 1024 * 1024) /* hunk size probably shouldn't be more than 128MB */
+
+/* we're currently only using this for CD/DVDs, if we end up with more than 10GB data, it's probably invalid */
+#define CHD_MAX_FILE_SIZE				(10ULL * 1024 * 1024 * 1024)
+
 #define COOKIE_VALUE				0xbaadf00d
 #define MAX_ZLIB_ALLOCS				64
 
@@ -2528,6 +2533,10 @@ static chd_error header_validate(const chd_header *header)
 			 header->obsolete_heads == 0 || header->obsolete_hunksize == 0))
 			return CHDERR_INVALID_PARAMETER;
 	}
+
+	/* some basic size checks to prevent huge mallocs */
+	if (header->hunkbytes >= CHD_MAX_HUNK_SIZE || ((uint64_t)header->hunkbytes * (uint64_t)header->totalhunks) >= CHD_MAX_FILE_SIZE)
+		return CHDERR_INVALID_PARAMETER;
 
 	return CHDERR_NONE;
 }
