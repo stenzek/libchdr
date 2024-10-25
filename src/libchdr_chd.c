@@ -2348,35 +2348,68 @@ CHD_EXPORT const chd_header *chd_get_header(chd_file *chd)
     chd_read_header - read CHD header data
 	from file into the pointed struct
 -------------------------------------------------*/
-CHD_EXPORT chd_error chd_read_header(const char *filename, chd_header *header)
+CHD_EXPORT chd_error chd_read_header_core_file(core_file* file, chd_header* header)
 {
-	chd_error err = CHDERR_NONE;
 	chd_file chd;
-
-	/* punt if NULL */
-	if (filename == NULL || header == NULL)
-		EARLY_EXIT(err = CHDERR_INVALID_PARAMETER);
-
-	/* open the file */
-	chd.file = core_stdio_fopen(filename);
-	if (chd.file == NULL)
-		EARLY_EXIT(err = CHDERR_FILE_NOT_FOUND);
+	chd_error err;
+	chd.file = file;
 
 	/* attempt to read the header */
 	err = header_read(&chd, header);
 	if (err != CHDERR_NONE)
-		EARLY_EXIT(err);
+		return err;
 
 	/* validate the header */
-	err = header_validate(header);
-	if (err != CHDERR_NONE)
-		EARLY_EXIT(err);
+	return header_validate(header);
+}
 
-cleanup:
-	if (chd.file != NULL)
-		core_fclose(chd.file);
+CHD_EXPORT chd_error chd_read_header_file(FILE *file, chd_header *header)
+{
+	core_file stream;
+	stream.argp = file;
+	stream.fsize = core_stdio_fsize;
+	stream.fread = core_stdio_fread;
+	stream.fclose = core_stdio_fclose_nonowner;
+	stream.fseek = core_stdio_fseek;
 
+	return chd_read_header_core_file(&stream, header);
+}
+
+CHD_EXPORT chd_error chd_read_header(const char *filename, chd_header *header)
+{
+	core_file *file;
+	chd_error err;
+	if (filename == NULL)
+		return CHDERR_INVALID_PARAMETER;
+
+	file = core_stdio_fopen(filename);
+	if (file == NULL)
+		return CHDERR_FILE_NOT_FOUND;
+
+	err = chd_read_header_core_file(file, header);
+	core_fclose(file);
 	return err;
+}
+
+CHD_EXPORT int chd_is_matching_parent(const chd_header* header, const chd_header* parent_header)
+{
+	/* check MD5 if it isn't empty */
+	if (memcmp(nullmd5, header->parentmd5, sizeof(header->parentmd5)) != 0 &&
+	    memcmp(nullmd5, parent_header->md5, sizeof(parent_header->md5)) != 0 &&
+	    memcmp(parent_header->md5, header->parentmd5, sizeof(header->parentmd5)) != 0)
+	{
+		return 0;
+	}
+
+	/* check SHA1 if it isn't empty */
+	if (memcmp(nullsha1, header->parentsha1, sizeof(header->parentsha1)) != 0 &&
+	    memcmp(nullsha1, parent_header->sha1, sizeof(parent_header->sha1)) != 0 &&
+	    memcmp(parent_header->sha1, header->parentsha1, sizeof(header->parentsha1)) != 0)
+	{
+		return 0;
+	}
+
+	return 1;
 }
 
 /***************************************************************************
