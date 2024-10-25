@@ -273,10 +273,16 @@ enum huffman_error huffman_import_tree_huffman(struct huffman_decoder* decoder, 
 	/* then regenerate the tree */
 	error = huffman_assign_canonical_codes(smallhuff);
 	if (error != HUFFERR_NONE)
+	{
+		delete_huffman_decoder(smallhuff);
 		return error;
+	}
 	error = huffman_build_lookup_table(smallhuff);
 	if (error != HUFFERR_NONE)
+	{
+		delete_huffman_decoder(smallhuff);
 		return error;
+	}
 
 	/* determine the maximum length of an RLE count */
 	temp = decoder->numcodes - 9;
