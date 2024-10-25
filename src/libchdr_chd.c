@@ -712,22 +712,39 @@ static chd_error cdlz_codec_decompress(void *codec, const uint8_t *src, uint32_t
 {
 	uint32_t framenum;
 	cdlz_codec_data* cdlz = (cdlz_codec_data*)codec;
+	chd_error decomp_err;
+	uint32_t complen_base;
 
 	/* determine header bytes */
-	uint32_t frames = destlen / CD_FRAME_SIZE;
-	uint32_t complen_bytes = (destlen < 65536) ? 2 : 3;
-	uint32_t ecc_bytes = (frames + 7) / 8;
-	uint32_t header_bytes = ecc_bytes + complen_bytes;
+	const uint32_t frames = destlen / CD_FRAME_SIZE;
+	const uint32_t complen_bytes = (destlen < 65536) ? 2 : 3;
+	const uint32_t ecc_bytes = (frames + 7) / 8;
+	const uint32_t header_bytes = ecc_bytes + complen_bytes;
+
+	/* input may be truncated, double-check */
+	if (complen < (ecc_bytes + 2))
+		return CHDERR_DECOMPRESSION_ERROR;
 
 	/* extract compressed length of base */
-	uint32_t complen_base = (src[ecc_bytes + 0] << 8) | src[ecc_bytes + 1];
+	complen_base = (src[ecc_bytes + 0] << 8) | src[ecc_bytes + 1];
 	if (complen_bytes > 2)
+	{
+		if (complen < (ecc_bytes + 3))
+			return CHDERR_DECOMPRESSION_ERROR;
+
 		complen_base = (complen_base << 8) | src[ecc_bytes + 2];
+	}
+	if (complen < (header_bytes + complen_base))
+		return CHDERR_DECOMPRESSION_ERROR;
 
 	/* reset and decode */
-	lzma_codec_decompress(&cdlz->base_decompressor, &src[header_bytes], complen_base, &cdlz->buffer[0], frames * CD_MAX_SECTOR_DATA);
+	decomp_err = lzma_codec_decompress(&cdlz->base_decompressor, &src[header_bytes], complen_base, &cdlz->buffer[0], frames * CD_MAX_SECTOR_DATA);
+	if (decomp_err != CHDERR_NONE)
+		return decomp_err;
 #ifdef WANT_SUBCODE
-	zlib_codec_decompress(&cdlz->subcode_decompressor, &src[header_bytes + complen_base], complen - complen_base - header_bytes, &cdlz->buffer[frames * CD_MAX_SECTOR_DATA], frames * CD_MAX_SUBCODE_DATA);
+	decomp_err = zlib_codec_decompress(&cdlz->subcode_decompressor, &src[header_bytes + complen_base], complen - complen_base - header_bytes, &cdlz->buffer[frames * CD_MAX_SECTOR_DATA], frames * CD_MAX_SUBCODE_DATA);
+	if (decomp_err != CHDERR_NONE)
+		return decomp_err;
 #endif
 
 	/* reassemble the data */
@@ -795,22 +812,39 @@ static chd_error cdzl_codec_decompress(void *codec, const uint8_t *src, uint32_t
 {
 	uint32_t framenum;
 	cdzl_codec_data* cdzl = (cdzl_codec_data*)codec;
+	chd_error decomp_err;
+	uint32_t complen_base;
 
 	/* determine header bytes */
-	uint32_t frames = destlen / CD_FRAME_SIZE;
-	uint32_t complen_bytes = (destlen < 65536) ? 2 : 3;
-	uint32_t ecc_bytes = (frames + 7) / 8;
-	uint32_t header_bytes = ecc_bytes + complen_bytes;
+	const uint32_t frames = destlen / CD_FRAME_SIZE;
+	const uint32_t complen_bytes = (destlen < 65536) ? 2 : 3;
+	const uint32_t ecc_bytes = (frames + 7) / 8;
+	const uint32_t header_bytes = ecc_bytes + complen_bytes;
+
+	/* input may be truncated, double-check */
+	if (complen < (ecc_bytes + 2))
+		return CHDERR_DECOMPRESSION_ERROR;
 
 	/* extract compressed length of base */
-	uint32_t complen_base = (src[ecc_bytes + 0] << 8) | src[ecc_bytes + 1];
+	complen_base = (src[ecc_bytes + 0] << 8) | src[ecc_bytes + 1];
 	if (complen_bytes > 2)
+	{
+		if (complen < (ecc_bytes + 3))
+			return CHDERR_DECOMPRESSION_ERROR;
+
 		complen_base = (complen_base << 8) | src[ecc_bytes + 2];
+	}
+	if (complen < (header_bytes + complen_base))
+		return CHDERR_DECOMPRESSION_ERROR;
 
 	/* reset and decode */
-	zlib_codec_decompress(&cdzl->base_decompressor, &src[header_bytes], complen_base, &cdzl->buffer[0], frames * CD_MAX_SECTOR_DATA);
+	decomp_err = zlib_codec_decompress(&cdzl->base_decompressor, &src[header_bytes], complen_base, &cdzl->buffer[0], frames * CD_MAX_SECTOR_DATA);
+	if (decomp_err != CHDERR_NONE)
+		return decomp_err;
 #ifdef WANT_SUBCODE
-	zlib_codec_decompress(&cdzl->subcode_decompressor, &src[header_bytes + complen_base], complen - complen_base - header_bytes, &cdzl->buffer[frames * CD_MAX_SECTOR_DATA], frames * CD_MAX_SUBCODE_DATA);
+	decomp_err = zlib_codec_decompress(&cdzl->subcode_decompressor, &src[header_bytes + complen_base], complen - complen_base - header_bytes, &cdzl->buffer[frames * CD_MAX_SECTOR_DATA], frames * CD_MAX_SUBCODE_DATA);
+	if (decomp_err != CHDERR_NONE)
+		return decomp_err;
 #endif
 
 	/* reassemble the data */
@@ -1155,22 +1189,39 @@ static chd_error cdzs_codec_decompress(void *codec, const uint8_t *src, uint32_t
 {
 	uint32_t framenum;
 	cdzs_codec_data* cdzs = (cdzs_codec_data*)codec;
+	chd_error decomp_err;
+	uint32_t complen_base;
 
 	/* determine header bytes */
-	uint32_t frames = destlen / CD_FRAME_SIZE;
-	uint32_t complen_bytes = (destlen < 65536) ? 2 : 3;
-	uint32_t ecc_bytes = (frames + 7) / 8;
-	uint32_t header_bytes = ecc_bytes + complen_bytes;
+	const uint32_t frames = destlen / CD_FRAME_SIZE;
+	const uint32_t complen_bytes = (destlen < 65536) ? 2 : 3;
+	const uint32_t ecc_bytes = (frames + 7) / 8;
+	const uint32_t header_bytes = ecc_bytes + complen_bytes;
+
+	/* input may be truncated, double-check */
+	if (complen < (ecc_bytes + 2))
+		return CHDERR_DECOMPRESSION_ERROR;
 
 	/* extract compressed length of base */
-	uint32_t complen_base = (src[ecc_bytes + 0] << 8) | src[ecc_bytes + 1];
+	complen_base = (src[ecc_bytes + 0] << 8) | src[ecc_bytes + 1];
 	if (complen_bytes > 2)
+	{
+		if (complen < (ecc_bytes + 3))
+			return CHDERR_DECOMPRESSION_ERROR;
+
 		complen_base = (complen_base << 8) | src[ecc_bytes + 2];
+	}
+	if (complen < (header_bytes + complen_base))
+		return CHDERR_DECOMPRESSION_ERROR;
 
 	/* reset and decode */
-	zstd_codec_decompress(&cdzs->base_decompressor, &src[header_bytes], complen_base, &cdzs->buffer[0], frames * CD_MAX_SECTOR_DATA);
+	decomp_err = zstd_codec_decompress(&cdzs->base_decompressor, &src[header_bytes], complen_base, &cdzs->buffer[0], frames * CD_MAX_SECTOR_DATA);
+	if (decomp_err != CHDERR_NONE)
+		return decomp_err;
 #ifdef WANT_SUBCODE
-	zstd_codec_decompress(&cdzs->subcode_decompressor, &src[header_bytes + complen_base], complen - complen_base - header_bytes, &cdzs->buffer[frames * CD_MAX_SECTOR_DATA], frames * CD_MAX_SUBCODE_DATA);
+	decomp_err = zstd_codec_decompress(&cdzs->subcode_decompressor, &src[header_bytes + complen_base], complen - complen_base - header_bytes, &cdzs->buffer[frames * CD_MAX_SECTOR_DATA], frames * CD_MAX_SUBCODE_DATA);
+	if (decomp_err != CHDERR_NONE)
+		return decomp_err;
 #endif
 
 	/* reassemble the data */
