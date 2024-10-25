@@ -1703,7 +1703,16 @@ static chd_error decompress_v5_map(chd_file* chd, chd_header* header)
 			rawmap[0] = lastcomp, repcount--;
 		else
 		{
-			uint8_t val = huffman_decode_one(decoder, bitbuf);
+			uint8_t val;
+			if (bitstream_overflow(bitbuf))
+			{
+				free(compressed_ptr);
+				free(bitbuf);
+				delete_huffman_decoder(decoder);
+				return CHDERR_DECOMPRESSION_ERROR;
+			}
+
+			val = huffman_decode_one(decoder, bitbuf);
 			if (val == COMPRESSION_RLE_SMALL)
 				rawmap[0] = lastcomp, repcount = 2 + huffman_decode_one(decoder, bitbuf);
 			else if (val == COMPRESSION_RLE_LARGE)
