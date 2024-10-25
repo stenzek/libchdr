@@ -299,6 +299,7 @@ struct _chd_file
 	uint32_t					cookie;			/* cookie, should equal COOKIE_VALUE */
 
 	core_file *				file;			/* handle to the open core file */
+	uint64_t				file_size;		/* size of the core file */
 	chd_header				header;			/* header, extracted from file */
 
 	chd_file *				parent;			/* pointer to parent file, or NULL */
@@ -1633,14 +1634,13 @@ static chd_error decompress_v5_map(chd_file* chd, chd_header* header)
 	struct huffman_decoder* decoder;
 	enum huffman_error err;
 	uint64_t curoffset;
-	const uint64_t file_size = core_fsize(chd->file);
 	int rawmapsize = map_size_v5(header);
 	if (rawmapsize < 0)
 		return CHDERR_INVALID_FILE;
 
 	if (!chd_compressed(header))
 	{
-		if ((header->mapoffset + rawmapsize) >= file_size || (header->mapoffset + rawmapsize) < header->mapoffset)
+		if ((header->mapoffset + rawmapsize) >= chd->file_size || (header->mapoffset + rawmapsize) < header->mapoffset)
 			return CHDERR_INVALID_FILE;
 
 		header->rawmap = (uint8_t*)malloc(rawmapsize);
@@ -1662,7 +1662,7 @@ static chd_error decompress_v5_map(chd_file* chd, chd_header* header)
 	parentbits = rawbuf[14];
 
 	/* now read the map */
-	if ((header->mapoffset + mapbytes) < header->mapoffset || (header->mapoffset + mapbytes) >= file_size)
+	if ((header->mapoffset + mapbytes) < header->mapoffset || (header->mapoffset + mapbytes) >= chd->file_size)
 		return CHDERR_INVALID_FILE;
 	compressed_ptr = (uint8_t*)malloc(sizeof(uint8_t) * mapbytes);
 	if (compressed_ptr == NULL)
@@ -1862,6 +1862,9 @@ CHD_EXPORT chd_error chd_open_core_file(core_file *file, int mode, chd_file *par
 	newchd->cookie = COOKIE_VALUE;
 	newchd->parent = parent;
 	newchd->file = file;
+	newchd->file_size = core_fsize(file);
+	if ((int64_t)newchd->file_size <= 0)
+		EARLY_EXIT(err = CHDERR_INVALID_FILE);
 
 	/* now attempt to read the header */
 	err = header_read(newchd, &newchd->header);
@@ -2057,19 +2060,15 @@ cleanup:
 CHD_EXPORT chd_error chd_precache(chd_file *chd)
 {
 	int64_t count;
-	uint64_t size;
 
 	if (chd->file_cache == NULL)
 	{
-		size = core_fsize(chd->file);
-		if ((int64_t)size <= 0)
-			return CHDERR_INVALID_DATA;
-		chd->file_cache = malloc(size);
+		chd->file_cache = malloc(chd->file_size);
 		if (chd->file_cache == NULL)
 			return CHDERR_OUT_OF_MEMORY;
 		core_fseek(chd->file, 0, SEEK_SET);
-		count = core_fread(chd->file, chd->file_cache, size);
-		if (count != size)
+		count = core_fread(chd->file, chd->file_cache, chd->file_size);
+		if (count != chd->file_size)
 		{
 			free(chd->file_cache);
 			chd->file_cache = NULL;
@@ -2702,7 +2701,10 @@ static uint8_t* hunk_read_compressed(chd_file *chd, uint64_t offset, size_t size
 #endif
 	if (chd->file_cache != NULL)
 	{
-		return chd->file_cache + offset;
+		if ((offset + size) > chd->file_size || (offset + size) < offset)
+			return NULL;
+		else
+			return chd->file_cache + offset;
 	}
 	else
 	{
@@ -2728,6 +2730,9 @@ static chd_error hunk_read_uncompressed(chd_file *chd, uint64_t offset, size_t s
 #endif
 	if (chd->file_cache != NULL)
 	{
+		if ((offset + size) > chd->file_size || (offset + size) < offset)
+			return CHDERR_READ_ERROR;
+
 		memcpy(dest, chd->file_cache + offset, size);
 	}
 	else
@@ -3070,7 +3075,7 @@ static chd_error map_read(chd_file *chd)
 	}
 
 	/* verify the length */
-	if (maxoffset > core_fsize(chd->file))
+	if (maxoffset > chd->file_size)
 	{
 		err = CHDERR_INVALID_FILE;
 		goto cleanup;
