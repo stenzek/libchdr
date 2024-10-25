@@ -1632,13 +1632,17 @@ static chd_error decompress_v5_map(chd_file* chd, chd_header* header)
 	uint8_t rawbuf[16];
 	struct huffman_decoder* decoder;
 	enum huffman_error err;
-	uint64_t curoffset;	
+	uint64_t curoffset;
+	const uint64_t file_size = core_fsize(chd->file);
 	int rawmapsize = map_size_v5(header);
 	if (rawmapsize < 0)
 		return CHDERR_INVALID_FILE;
 
 	if (!chd_compressed(header))
 	{
+		if ((header->mapoffset + rawmapsize) >= file_size || (header->mapoffset + rawmapsize) < header->mapoffset)
+			return CHDERR_INVALID_FILE;
+
 		header->rawmap = (uint8_t*)malloc(rawmapsize);
 		if (header->rawmap == NULL)
 			return CHDERR_OUT_OF_MEMORY;
@@ -1658,6 +1662,8 @@ static chd_error decompress_v5_map(chd_file* chd, chd_header* header)
 	parentbits = rawbuf[14];
 
 	/* now read the map */
+	if ((header->mapoffset + mapbytes) < header->mapoffset || (header->mapoffset + mapbytes) >= file_size)
+		return CHDERR_INVALID_FILE;
 	compressed_ptr = (uint8_t*)malloc(sizeof(uint8_t) * mapbytes);
 	if (compressed_ptr == NULL)
 		return CHDERR_OUT_OF_MEMORY;
