@@ -41,6 +41,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 #include <time.h>
 
 #include <libchdr/chd.h>
@@ -1542,6 +1543,11 @@ static inline void map_assemble(uint8_t *base, map_entry *entry)
 -------------------------------------------------*/
 static inline int map_size_v5(chd_header* header)
 {
+	// Avoid overflow due to corrupted data.
+	const uint32_t max_hunkcount = (UINT32_MAX / header->mapentrybytes);
+	if (header->hunkcount > max_hunkcount)
+		return -1;
+
 	return header->hunkcount * header->mapentrybytes;
 }
 
@@ -1628,6 +1634,8 @@ static chd_error decompress_v5_map(chd_file* chd, chd_header* header)
 	enum huffman_error err;
 	uint64_t curoffset;	
 	int rawmapsize = map_size_v5(header);
+	if (rawmapsize < 0)
+		return CHDERR_INVALID_FILE;
 
 	if (!chd_compressed(header))
 	{
