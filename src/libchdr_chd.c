@@ -1957,11 +1957,18 @@ CHD_EXPORT chd_error chd_open_core_file(core_file *file, int mode, chd_file *par
 		/* verify the compression types and initialize the codecs */
 		for (decompnum = 0; decompnum < ARRAY_LENGTH(newchd->header.compression); decompnum++)
 		{
-			int i;
+			int i, j;
 			for (i = 0 ; i < ARRAY_LENGTH(codec_interfaces) ; i++)
 			{
 				if (codec_interfaces[i].compression == newchd->header.compression[decompnum])
 				{
+					/* ensure we don't try to initialize the same codec twice */
+					for (j = 0; j < decompnum; j++)
+					{
+						if (newchd->codecintf[j] == &codec_interfaces[i])
+							EARLY_EXIT(err = CHDERR_UNSUPPORTED_FORMAT);
+					}
+
 					newchd->codecintf[decompnum] = &codec_interfaces[i];
 					break;
 				}
