@@ -17,6 +17,14 @@ if(BUILD_LTO)
   endif()
 endif()
 
+option(BUILD_FUZZER "Build instrumented binary for fuzzing with libfuzzer, requires clang")
+if(BUILD_FUZZER)
+  # Override CFLAGS early for instrumentation. Disable shared libs for instrumentation.
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,fuzzer-no-link")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address,fuzzer-no-link")
+  set(BUILD_SHARED_LIBS OFF)
+endif()
+
 include(GNUInstallDirs)
 
 #--------------------------------------------------
